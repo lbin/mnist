@@ -92,18 +92,25 @@ val_iter = mx.io.NDArrayIter(val_data, val_label, batch_size=batch_size)
 head = '%(asctime)-15s Node[0] %(message)s'
 logging.basicConfig(level=logging.DEBUG, format=head)
 
+model_args = {}
+num_epoch = 200
+tmp = mx.model.FeedForward.load('resnet', 100)
+model_args = {'arg_params' : tmp.arg_params,
+              'aux_params' : tmp.aux_params,
+              'begin_epoch' : 100}
+
 # create model
 devs = mx.gpu(0)
 network=get_symbol()
 model = mx.model.FeedForward(
         ctx                = devs,
         symbol             = network,
-        num_epoch          = 100,
-        learning_rate      = 0.1,
+        num_epoch          = num_epoch,
+        learning_rate      = 0.01,
         momentum           = 0.9,
         wd                 = 0.0001,
-        initializer        = mx.init.Xavier(factor_type="in", magnitude=2.34)
-        )
+        initializer        = mx.init.Xavier(factor_type="in", magnitude=2.34),
+        **model_args)
 
 eval_metrics = ['accuracy']
 model.fit(
@@ -111,6 +118,9 @@ model.fit(
 	eval_metric        = eval_metrics,
 	eval_data	 = val_iter
 	)
+
+prefix = 'resnet'
+model.save(prefix, num_epoch)
 
 #predict
 test = pd.read_csv("./test.csv").values
@@ -121,4 +131,4 @@ test_iter = mx.io.NDArrayIter(test_data, batch_size=batch_size)
 
 pred = model.predict(X = test_iter)
 pred = np.argsort(pred)
-np.savetxt('submission_lb_res_v1.csv', np.c_[range(1,len(test)+1),pred[:,9]], delimiter=',', header = 'ImageId,Label', comments = '', fmt='%d')
+np.savetxt('submission_lb_res_v1_1.csv', np.c_[range(1,len(test)+1),pred[:,9]], delimiter=',', header = 'ImageId,Label', comments = '', fmt='%d')
